@@ -1,6 +1,6 @@
 {
   "name": "figmx",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn Figma Make exports into clean React + Vite + Tailwind apps",
   "author": "juan hander",
   "license": "MIT",
