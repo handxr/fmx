@@ -9,6 +9,8 @@ export interface SummaryData {
   depsKept: number;
   depsRemoved: number;
   styleFixCount: number;
+  importsFixed: number;
+  depsAdded: number;
   warnings: string[];
 }
 
@@ -39,6 +41,18 @@ export function Summary({ data }: { data: SummaryData }) {
           {", "}
           <Text dimColor>{data.depsRemoved} removed</Text>
         </Text>
+        {(data.importsFixed > 0 || data.depsAdded > 0) && (
+          <Text>
+            {"Resolve: "}
+            {data.importsFixed > 0 && (
+              <Text color="green">{data.importsFixed} imports fixed</Text>
+            )}
+            {data.importsFixed > 0 && data.depsAdded > 0 && ", "}
+            {data.depsAdded > 0 && (
+              <Text color="green">{data.depsAdded} deps added</Text>
+            )}
+          </Text>
+        )}
         {data.styleFixCount > 0 && (
           <Text>
             {"Styles:  "}

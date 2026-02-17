@@ -4,6 +4,7 @@ import { StepList, type Step } from "./ui/StepList.js";
 import { Summary, type SummaryData } from "./ui/Summary.js";
 import { extract } from "./pipeline/extract.js";
 import { analyze } from "./pipeline/analyze.js";
+import { resolveDeps } from "./pipeline/resolve-deps.js";
 import { transform } from "./pipeline/transform.js";
 import { writeOutput } from "./pipeline/write.js";
 import type { ValidatedInput } from "./pipeline/validate.js";
@@ -17,6 +18,7 @@ export function App({ input }: AppProps) {
   const [steps, setSteps] = useState<Step[]>([
     { label: "Extracting files", status: "pending" },
     { label: "Analyzing dependencies", status: "pending" },
+    { label: "Resolving dependencies", status: "pending" },
     { label: "Transforming imports", status: "pending" },
     { label: "Writing output", status: "pending" },
   ]);
@@ -45,27 +47,40 @@ export function App({ input }: AppProps) {
           detail: `${analysisResult.reachableFiles.size} files used, ${analysisResult.unreachableFiles.size} removed`,
         });
 
-        // Phase 3: Transform
+        // Phase 3: Resolve deps
         updateStep(2, { status: "running" });
+        const resolveResult = await resolveDeps(
+          extractResult.codeDir,
+          analysisResult.reachableFiles
+        );
+        updateStep(2, {
+          status: "done",
+          detail: resolveResult.importsFixed > 0 || resolveResult.depsAdded > 0
+            ? `${resolveResult.importsFixed} imports fixed, ${resolveResult.depsAdded} deps added`
+            : undefined,
+        });
+
+        // Phase 4: Transform
+        updateStep(3, { status: "running" });
         const transformResult = await transform(
           extractResult.codeDir,
           extractResult.assetsDir,
           analysisResult
         );
-        updateStep(2, {
+        updateStep(3, {
           status: "done",
           detail: `${transformResult.assetMappings.length} assets, ${transformResult.styleFixCount} style fixes`,
         });
 
-        // Phase 4: Write
-        updateStep(3, { status: "running" });
+        // Phase 5: Write
+        updateStep(4, { status: "running" });
         const writeResult = await writeOutput(
           extractResult.codeDir,
           input.outputDir,
           analysisResult,
           transformResult
         );
-        updateStep(3, { status: "done" });
+        updateStep(4, { status: "done" });
 
         // Compute summary stats
         const keptDeps = Object.keys(
@@ -81,6 +96,8 @@ export function App({ input }: AppProps) {
           depsKept: keptDeps,
           depsRemoved: transformResult.depsRemoved,
           styleFixCount: transformResult.styleFixCount,
+          importsFixed: resolveResult.importsFixed,
+          depsAdded: resolveResult.depsAdded,
           warnings: transformResult.warnings,
         });
 
