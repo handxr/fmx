@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 // @ts-ignore - no type declarations available
 import unzipper from "unzipper";
@@ -14,10 +16,7 @@ export async function extract(
   zipPath: string,
   makePath: string
 ): Promise<ExtractResult> {
-  const tempDir = join(
-    "/tmp",
-    `fmx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  );
+  const tempDir = join(tmpdir(), `fmx-${randomUUID()}`);
   const codeDir = join(tempDir, "code");
   const assetsDir = join(tempDir, "assets");
 
