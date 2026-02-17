@@ -1,9 +1,12 @@
 {
-  "name": "figmamake",
+  "name": "fmx",
   "version": "1.0.0",
+  "description": "Turn Figma Make exports into clean React + Vite + Tailwind apps",
+  "author": "juan hander",
+  "license": "MIT",
   "type": "module",
   "bin": {
-    "figmamake": "./src/cli.tsx"
+    "fmx": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsup",

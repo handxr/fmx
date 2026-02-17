@@ -16,7 +16,7 @@ export async function extract(
 ): Promise<ExtractResult> {
   const tempDir = join(
     "/tmp",
-    `figmamake-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    `fmx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   );
   const codeDir = join(tempDir, "code");
   const assetsDir = join(tempDir, "assets");

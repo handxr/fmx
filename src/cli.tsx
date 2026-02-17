@@ -7,14 +7,14 @@ import { App } from "./app.js";
 const cli = meow(
   `
   Usage
-    $ figmamake <dir>
+    $ fmx <dir>
 
   Options
     -o, --output  Output directory name
 
   Examples
-    $ figmamake ./my-export
-    $ figmamake ./my-export -o my-app
+    $ fmx ./my-export
+    $ fmx ./my-export -o my-app
 `,
   {
     importMeta: import.meta,

@@ -110,7 +110,7 @@ export function App({ input }: AppProps) {
     <Box flexDirection="column">
       <Newline />
       <Box marginLeft={2}>
-        <Text bold>figmamake</Text>
+        <Text bold>fmx</Text>
         <Text dimColor> v1.0.0</Text>
       </Box>
       <Newline />

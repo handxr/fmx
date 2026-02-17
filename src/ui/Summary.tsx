@@ -58,7 +58,7 @@ export function Summary({ data }: { data: SummaryData }) {
 
       <Newline />
       <Text dimColor>
-        Next: cd "{data.outputDir}" && bun install && bun dev
+        Next: cd "{data.outputDir}" && npm install && npm run dev
       </Text>
     </Box>
   );
