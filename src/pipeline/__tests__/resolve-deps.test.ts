@@ -50,4 +50,55 @@ describe("resolveDeps", () => {
     expect(content).not.toContain("@0.7.1");
     expect(result.importsFixed).toBe(3);
   });
+
+  it("adds missing deps to package.json using version from imports", async () => {
+    await writeFile(
+      join(srcDir, "App.tsx"),
+      [
+        'import { toast } from "sonner@2.0.3";',
+        'import { Slot } from "@radix-ui/react-slot@1.1.2";',
+        'import { motion } from "framer-motion";',
+        "export function App() { return null; }",
+      ].join("\n")
+    );
+    await writeFile(
+      join(codeDir, "package.json"),
+      JSON.stringify({
+        name: "test",
+        dependencies: { "framer-motion": "*", react: "^18.3.1", "react-dom": "^18.3.1" },
+        devDependencies: { vite: "6.3.5" },
+        scripts: { dev: "vite" },
+      })
+    );
+
+    const reachableFiles = new Set(["src/App.tsx"]);
+    const result = await resolveDeps(codeDir, reachableFiles);
+
+    const pkg = JSON.parse(await readFile(join(codeDir, "package.json"), "utf-8"));
+    expect(pkg.dependencies.sonner).toBe("^2.0.3");
+    expect(pkg.dependencies["@radix-ui/react-slot"]).toBe("^1.1.2");
+    expect(pkg.dependencies["framer-motion"]).toBe("*"); // kept existing
+    expect(result.depsAdded).toBe(2);
+  });
+
+  it("resolves wildcard versions when version found in imports", async () => {
+    await writeFile(
+      join(srcDir, "App.tsx"),
+      'import { motion } from "framer-motion@11.18.0";\nexport default motion;\n'
+    );
+    await writeFile(
+      join(codeDir, "package.json"),
+      JSON.stringify({
+        name: "test",
+        dependencies: { "framer-motion": "*", react: "^18.3.1" },
+      })
+    );
+
+    const reachableFiles = new Set(["src/App.tsx"]);
+    const result = await resolveDeps(codeDir, reachableFiles);
+
+    const pkg = JSON.parse(await readFile(join(codeDir, "package.json"), "utf-8"));
+    expect(pkg.dependencies["framer-motion"]).toBe("^11.18.0");
+    expect(result.wildcardResolved).toBe(1);
+  });
 });

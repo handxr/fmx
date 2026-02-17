@@ -15,8 +15,105 @@ export interface ResolveDepsResult {
 const VERSIONED_IMPORT_REGEX =
   /(from\s+["'])(@?[^"'@][^"']*?)@(\d+\.\d+\.\d+[^"']*)(["'])/g;
 
+// Detects all bare imports (non-relative, non-node:, non-figma:)
+const BARE_IMPORT_REGEX =
+  /(?:import\s+(?:[\w{},\s*]+\s+from\s+)?|export\s+(?:[\w{},\s*]+\s+from\s+)?|import\s*\()["']([^"'./][^"']*)["']/g;
+
 interface VersionMap {
   [packageName: string]: string;
+}
+
+function getPackageName(specifier: string): string {
+  if (specifier.startsWith("@")) {
+    const parts = specifier.split("/");
+    return parts.slice(0, 2).join("/");
+  }
+  return specifier.split("/")[0];
+}
+
+async function findAllImportedPackages(
+  codeDir: string,
+  reachableFiles: Set<string>
+): Promise<Set<string>> {
+  const packages = new Set<string>();
+
+  for (const relPath of reachableFiles) {
+    if (relPath.endsWith(".css")) continue;
+    const content = await readFile(join(codeDir, relPath), "utf-8");
+
+    BARE_IMPORT_REGEX.lastIndex = 0;
+    let match;
+    while ((match = BARE_IMPORT_REGEX.exec(content)) !== null) {
+      const specifier = match[1];
+      if (specifier && !specifier.startsWith("figma:") && !specifier.startsWith("node:")) {
+        packages.add(getPackageName(specifier));
+      }
+    }
+  }
+
+  return packages;
+}
+
+async function completePackageJson(
+  codeDir: string,
+  versionMap: VersionMap,
+  importedPackages: Set<string>
+): Promise<{ depsAdded: number; wildcardResolved: number; generated: boolean }> {
+  const pkgPath = join(codeDir, "package.json");
+  let pkg: any;
+  let generated = false;
+
+  try {
+    await access(pkgPath);
+    pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+  } catch {
+    // No package.json -- generate from scratch
+    const dirName = basename(codeDir).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+    pkg = {
+      name: dirName,
+      version: "0.1.0",
+      private: true,
+      dependencies: { react: "^18.3.1", "react-dom": "^18.3.1" },
+      devDependencies: {
+        "@types/node": "^20.10.0",
+        "@vitejs/plugin-react-swc": "^3.10.2",
+        vite: "6.3.5",
+      },
+      scripts: { dev: "vite", build: "vite build" },
+    };
+    generated = true;
+  }
+
+  if (!pkg.dependencies) pkg.dependencies = {};
+
+  const allDeps = { ...pkg.dependencies, ...pkg.peerDependencies };
+  let depsAdded = 0;
+  let wildcardResolved = 0;
+
+  const skipPkgs = new Set(["react", "react-dom"]);
+
+  for (const pkgName of importedPackages) {
+    if (skipPkgs.has(pkgName)) continue;
+
+    const existingVersion = allDeps[pkgName];
+    const importVersion = versionMap[pkgName];
+
+    if (!existingVersion) {
+      pkg.dependencies[pkgName] = importVersion ? `^${importVersion}` : "*";
+      depsAdded++;
+    } else if (existingVersion === "*" && importVersion) {
+      pkg.dependencies[pkgName] = `^${importVersion}`;
+      wildcardResolved++;
+    }
+  }
+
+  pkg.dependencies = Object.fromEntries(
+    Object.entries(pkg.dependencies).sort(([a], [b]) => a.localeCompare(b))
+  );
+
+  await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+
+  return { depsAdded, wildcardResolved, generated };
 }
 
 async function cleanVersionedImports(
@@ -56,16 +153,21 @@ export async function resolveDeps(
   reachableFiles: Set<string>
 ): Promise<ResolveDepsResult> {
   // Phase 1: Clean versioned imports and collect version map
-  const { importsFixed, versionMap } = await cleanVersionedImports(
-    codeDir,
-    reachableFiles
+  const { importsFixed, versionMap } = await cleanVersionedImports(codeDir, reachableFiles);
+
+  // Phase 2: Detect all imported packages (after cleaning)
+  const importedPackages = await findAllImportedPackages(codeDir, reachableFiles);
+
+  // Phase 3: Complete package.json
+  const { depsAdded, wildcardResolved, generated } = await completePackageJson(
+    codeDir, versionMap, importedPackages
   );
 
   return {
     importsFixed,
-    depsAdded: 0,
-    wildcardResolved: 0,
+    depsAdded,
+    wildcardResolved,
     viteAliasesCleaned: 0,
-    packageJsonGenerated: false,
+    packageJsonGenerated: generated,
   };
 }
