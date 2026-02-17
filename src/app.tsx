@@ -127,7 +127,7 @@ export function App({ input }: AppProps) {
     <Box flexDirection="column">
       <Newline />
       <Box marginLeft={2}>
-        <Text bold>fmx</Text>
+        <Text bold>figmx</Text>
         <Text dimColor> v1.0.0</Text>
       </Box>
       <Newline />

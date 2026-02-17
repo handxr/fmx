@@ -7,14 +7,14 @@ import { App } from "./app.js";
 const cli = meow(
   `
   Usage
-    $ fmx <dir>
+    $ figmx <dir>
 
   Options
     -o, --output  Output directory name
 
   Examples
-    $ fmx ./my-export
-    $ fmx ./my-export -o my-app
+    $ figmx ./my-export
+    $ figmx ./my-export -o my-app
 `,
   {
     importMeta: import.meta,

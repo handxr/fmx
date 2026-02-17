@@ -1,4 +1,4 @@
-# fmx
+# figmx
 
 Turn [Figma Make](https://www.figma.com/make) exports into clean React + Vite + Tailwind apps.
 
@@ -15,17 +15,17 @@ Takes a directory containing a Figma Make `.zip` + `.make` export pair and gener
 ## Install
 
 ```bash
-npm install -g fmx
+npm install -g figmx
 ```
 
 ## Usage
 
 ```bash
 # Basic — output dir matches export name
-fmx ./my-figma-export
+figmx ./my-figma-export
 
 # Custom output directory
-fmx ./my-figma-export -o my-app
+figmx ./my-figma-export -o my-app
 ```
 
 Then:
