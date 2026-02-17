@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { render, Text } from "ink";
 import meow from "meow";
 import { resolve } from "node:path";

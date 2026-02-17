@@ -1,3 +1,4 @@
+import { readFile, readdir, access } from "node:fs/promises";
 import { join } from "node:path";
 import type { AnalysisResult } from "./analyze.js";
 import { fixStyles } from "./fix-styles.js";
@@ -62,7 +63,7 @@ export async function transform(
 
   for (const relPath of analysis.reachableFiles) {
     const absPath = join(codeDir, relPath);
-    let content = await Bun.file(absPath).text();
+    let content = await readFile(absPath, "utf-8");
 
     let hasChanges = false;
     const replacements: Array<{ original: string; replacement: string }> = [];
@@ -76,14 +77,14 @@ export async function transform(
       const originalImport = match[0];
 
       const assetPath = join(assetsDir, "images", hash);
-      const assetExists = await Bun.file(assetPath).exists();
+      const assetExists = await access(assetPath).then(() => true, () => false);
 
       if (!assetExists) {
         warnings.push(`Asset not found: ${hash} (referenced as ${varName} in ${relPath}). Keeping original import.`);
         continue;
       }
 
-      const bytes = new Uint8Array(await Bun.file(assetPath).arrayBuffer()).slice(0, 100);
+      const bytes = (await readFile(assetPath)).subarray(0, 100);
       const fileType = detectFileType(bytes);
       const targetRelPath = `assets/${hash}.${fileType.ext}`;
 
@@ -119,7 +120,7 @@ export async function transform(
   // Analyze used packages and clean package.json
   const usedPackages = await findUsedPackages(codeDir, analysis.reachableFiles);
   const pkgPath = join(codeDir, "package.json");
-  const pkg = await Bun.file(pkgPath).json();
+  const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
   const { cleaned, depsRemoved } = cleanPackageJson(pkg, usedPackages);
 
   return {
@@ -154,7 +155,7 @@ async function findUsedPackages(
   const usedPackages = new Set<string>();
 
   for (const relPath of reachableFiles) {
-    const content = await Bun.file(join(codeDir, relPath)).text();
+    const content = await readFile(join(codeDir, relPath), "utf-8");
 
     if (relPath.endsWith(".css")) {
       // Scan CSS for @import of npm packages
@@ -180,12 +181,11 @@ async function findUsedPackages(
   }
 
   // Also scan all style files (they're always copied to output)
-  const { readdir } = await import("node:fs/promises");
   try {
     const styleFiles = await readdir(join(codeDir, "src", "styles"));
     for (const file of styleFiles) {
       if (!file.endsWith(".css")) continue;
-      const content = await Bun.file(join(codeDir, "src", "styles", file)).text();
+      const content = await readFile(join(codeDir, "src", "styles", file), "utf-8");
       let cssMatch;
       CSS_IMPORT_REGEX.lastIndex = 0;
       while ((cssMatch = CSS_IMPORT_REGEX.exec(content)) !== null) {

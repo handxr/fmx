@@ -1,3 +1,4 @@
+import { readFile, access } from "node:fs/promises";
 import { join } from "node:path";
 
 export interface StyleRule {
@@ -57,7 +58,7 @@ export async function fixStyles(
   const filesToProcess = new Set(reachableFiles);
   const cssTargets = ["src/styles/theme.css"];
   for (const target of cssTargets) {
-    if (!filesToProcess.has(target) && await Bun.file(join(codeDir, target)).exists()) {
+    if (!filesToProcess.has(target) && await access(join(codeDir, target)).then(() => true, () => false)) {
       filesToProcess.add(target);
     }
   }
@@ -65,7 +66,7 @@ export async function fixStyles(
   // Apply rules to every file
   for (const relPath of filesToProcess) {
     let content = transformedFiles.get(relPath) ??
-      await Bun.file(join(codeDir, relPath)).text();
+      await readFile(join(codeDir, relPath), "utf-8");
 
     for (const rule of rules) {
       if (!rule.appliesTo(relPath)) continue;

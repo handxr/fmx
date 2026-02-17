@@ -1,4 +1,4 @@
-import { readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { join, dirname, resolve, extname } from "node:path";
 
 export interface AnalysisResult {
@@ -123,7 +123,7 @@ export async function analyze(codeDir: string): Promise<AnalysisResult> {
     // Don't parse CSS files for JS imports
     if (filePath.endsWith(".css")) continue;
 
-    const content = await Bun.file(filePath).text();
+    const content = await readFile(filePath, "utf-8");
     const { modulePaths, figmaAssets: assets } = extractImports(content);
 
     for (const asset of assets) {

@@ -1,4 +1,4 @@
-import { mkdir, copyFile, readdir, stat } from "node:fs/promises";
+import { mkdir, copyFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import type { TransformResult } from "./transform.js";
 import type { AnalysisResult } from "./analyze.js";
@@ -53,7 +53,7 @@ export async function writeOutput(
       const dest = join(outputDir, relPath);
       await mkdir(dirname(dest), { recursive: true });
       if (transformResult.transformedFiles.has(relPath)) {
-        await Bun.write(dest, transformResult.transformedFiles.get(relPath)!);
+        await writeFile(dest, transformResult.transformedFiles.get(relPath)!);
       } else {
         await copyFile(join(stylesDir, file), dest);
       }
@@ -69,7 +69,7 @@ export async function writeOutput(
     await mkdir(dirname(dest), { recursive: true });
 
     if (transformResult.transformedFiles.has(relPath)) {
-      await Bun.write(dest, transformResult.transformedFiles.get(relPath)!);
+      await writeFile(dest, transformResult.transformedFiles.get(relPath)!);
     } else {
       await copyFile(join(codeDir, relPath), dest);
     }
@@ -88,7 +88,7 @@ export async function writeOutput(
   }
 
   // 5. Write cleaned package.json
-  await Bun.write(
+  await writeFile(
     join(outputDir, "package.json"),
     JSON.stringify(transformResult.cleanedPackageJson, null, 2) + "\n"
   );
