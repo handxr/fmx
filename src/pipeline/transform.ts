@@ -179,7 +179,7 @@ function cleanPackageJson(
     const reactVersion = cleaned.peerDependencies.react || "18.3.1";
     const reactDomVersion = cleaned.peerDependencies["react-dom"] || "18.3.1";
 
-    cleaned.dependencies = { ...cleaned.dependencies } || {};
+    cleaned.dependencies = cleaned.dependencies ? { ...cleaned.dependencies } : {};
     cleaned.dependencies.react = reactVersion;
     cleaned.dependencies["react-dom"] = reactDomVersion;
 

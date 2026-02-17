@@ -1,5 +1,6 @@
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
+// @ts-ignore - no type declarations available
 import unzipper from "unzipper";
 
 export interface ExtractResult {
