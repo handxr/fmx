@@ -44,15 +44,19 @@ export async function writeOutput(
     }
   }
 
-  // 2. Copy all style files
+  // 2. Copy all style files (with transformations applied if any)
   const stylesDir = join(codeDir, STYLE_DIR);
   try {
     const styleFiles = await readdir(stylesDir);
     for (const file of styleFiles) {
-      const src = join(stylesDir, file);
-      const dest = join(outputDir, STYLE_DIR, file);
+      const relPath = `${STYLE_DIR}/${file}`;
+      const dest = join(outputDir, relPath);
       await mkdir(dirname(dest), { recursive: true });
-      await copyFile(src, dest);
+      if (transformResult.transformedFiles.has(relPath)) {
+        await Bun.write(dest, transformResult.transformedFiles.get(relPath)!);
+      } else {
+        await copyFile(join(stylesDir, file), dest);
+      }
       filesCopied++;
     }
   } catch {
