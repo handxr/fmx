@@ -101,4 +101,35 @@ describe("resolveDeps", () => {
     expect(pkg.dependencies["framer-motion"]).toBe("^11.18.0");
     expect(result.wildcardResolved).toBe(1);
   });
+
+  it("generates package.json from scratch when missing", async () => {
+    await writeFile(
+      join(srcDir, "main.tsx"),
+      [
+        'import { createRoot } from "react-dom/client";',
+        'import App from "./App.tsx";',
+      ].join("\n")
+    );
+    await writeFile(
+      join(srcDir, "App.tsx"),
+      [
+        'import { motion } from "framer-motion@11.18.0";',
+        'import { clsx } from "clsx";',
+        "export default function App() { return null; }",
+      ].join("\n")
+    );
+    // No package.json created
+
+    const reachableFiles = new Set(["src/main.tsx", "src/App.tsx"]);
+    const result = await resolveDeps(codeDir, reachableFiles);
+
+    expect(result.packageJsonGenerated).toBe(true);
+    const pkg = JSON.parse(await readFile(join(codeDir, "package.json"), "utf-8"));
+    expect(pkg.dependencies.react).toBeDefined();
+    expect(pkg.dependencies["react-dom"]).toBeDefined();
+    expect(pkg.dependencies["framer-motion"]).toBe("^11.18.0");
+    expect(pkg.dependencies.clsx).toBe("*");
+    expect(pkg.devDependencies.vite).toBeDefined();
+    expect(pkg.scripts.dev).toBe("vite");
+  });
 });
