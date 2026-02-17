@@ -8,6 +8,20 @@
   "bin": {
     "fmx": "./dist/cli.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "figma",
+    "figma-make",
+    "react",
+    "vite",
+    "tailwind",
+    "code-generation"
+  ],
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
