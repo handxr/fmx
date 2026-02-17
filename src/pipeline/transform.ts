@@ -139,6 +139,8 @@ function getPackageName(specifier: string): string {
   return specifier.split("/")[0];
 }
 
+const CSS_IMPORT_REGEX = /@import\s+['"]([^'"./][^'"]*)['"]/g;
+
 async function findUsedPackages(
   codeDir: string,
   reachableFiles: Set<string>
@@ -146,10 +148,21 @@ async function findUsedPackages(
   const usedPackages = new Set<string>();
 
   for (const relPath of reachableFiles) {
-    // Skip non-JS/TS files
-    if (relPath.endsWith(".css")) continue;
-
     const content = await Bun.file(join(codeDir, relPath)).text();
+
+    if (relPath.endsWith(".css")) {
+      // Scan CSS for @import of npm packages
+      let cssMatch;
+      CSS_IMPORT_REGEX.lastIndex = 0;
+      while ((cssMatch = CSS_IMPORT_REGEX.exec(content)) !== null) {
+        const specifier = cssMatch[1];
+        if (specifier) {
+          usedPackages.add(getPackageName(specifier));
+        }
+      }
+      continue;
+    }
+
     let match;
     BARE_IMPORT_REGEX.lastIndex = 0;
     while ((match = BARE_IMPORT_REGEX.exec(content)) !== null) {
@@ -158,6 +171,26 @@ async function findUsedPackages(
         usedPackages.add(getPackageName(specifier));
       }
     }
+  }
+
+  // Also scan all style files (they're always copied to output)
+  const { readdir } = await import("node:fs/promises");
+  try {
+    const styleFiles = await readdir(join(codeDir, "src", "styles"));
+    for (const file of styleFiles) {
+      if (!file.endsWith(".css")) continue;
+      const content = await Bun.file(join(codeDir, "src", "styles", file)).text();
+      let cssMatch;
+      CSS_IMPORT_REGEX.lastIndex = 0;
+      while ((cssMatch = CSS_IMPORT_REGEX.exec(content)) !== null) {
+        const specifier = cssMatch[1];
+        if (specifier) {
+          usedPackages.add(getPackageName(specifier));
+        }
+      }
+    }
+  } catch {
+    // No styles dir
   }
 
   // Always keep these

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, Newline, useApp } from "ink";
 import { StepList, type Step } from "./ui/StepList.js";
 import { Summary, type SummaryData } from "./ui/Summary.js";
