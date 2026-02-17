@@ -8,6 +8,7 @@ export interface SummaryData {
   assetsDiscarded: number;
   depsKept: number;
   depsRemoved: number;
+  styleFixCount: number;
   warnings: string[];
 }
 
@@ -38,6 +39,12 @@ export function Summary({ data }: { data: SummaryData }) {
           {", "}
           <Text dimColor>{data.depsRemoved} removed</Text>
         </Text>
+        {data.styleFixCount > 0 && (
+          <Text>
+            {"Styles:  "}
+            <Text color="green">{data.styleFixCount} fixed</Text>
+          </Text>
+        )}
       </Box>
 
       {data.warnings.length > 0 && (

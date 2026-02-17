@@ -54,7 +54,7 @@ export function App({ input }: AppProps) {
         );
         updateStep(2, {
           status: "done",
-          detail: `${transformResult.assetMappings.length} assets resolved`,
+          detail: `${transformResult.assetMappings.length} assets, ${transformResult.styleFixCount} style fixes`,
         });
 
         // Phase 4: Write
@@ -80,6 +80,7 @@ export function App({ input }: AppProps) {
           assetsDiscarded: extractResult.totalImages - writeResult.assetsWritten,
           depsKept: keptDeps,
           depsRemoved: transformResult.depsRemoved,
+          styleFixCount: transformResult.styleFixCount,
           warnings: transformResult.warnings,
         });
 

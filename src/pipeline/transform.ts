@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { AnalysisResult } from "./analyze.js";
+import { fixStyles } from "./fix-styles.js";
 
 const FIGMA_IMPORT_REGEX =
   /import\s+(\w+)\s+from\s+["']figma:asset\/([a-f0-9]+)\.(\w+)["']\s*;?/g;
@@ -46,6 +47,7 @@ export interface TransformResult {
   cleanedPackageJson: any;
   warnings: string[];
   depsRemoved: number;
+  styleFixCount: number;
 }
 
 export async function transform(
@@ -111,6 +113,9 @@ export async function transform(
     }
   }
 
+  // Fix Figma Make styling issues
+  const styleFixResult = await fixStyles(transformedFiles, analysis.reachableFiles, codeDir);
+
   // Analyze used packages and clean package.json
   const usedPackages = await findUsedPackages(codeDir, analysis.reachableFiles);
   const pkgPath = join(codeDir, "package.json");
@@ -123,6 +128,7 @@ export async function transform(
     cleanedPackageJson: cleaned,
     warnings,
     depsRemoved,
+    styleFixCount: styleFixResult.totalFixes,
   };
 }
 
