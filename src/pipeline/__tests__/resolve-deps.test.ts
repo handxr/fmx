@@ -102,6 +102,77 @@ describe("resolveDeps", () => {
     expect(result.wildcardResolved).toBe(1);
   });
 
+  it("removes versioned aliases from vite.config.ts and keeps @ alias", async () => {
+    await writeFile(
+      join(srcDir, "App.tsx"),
+      'import { useState } from "react";\nexport function App() { return null; }\n'
+    );
+    await writeFile(
+      join(codeDir, "package.json"),
+      JSON.stringify({ name: "test", dependencies: { react: "^18.3.1" } })
+    );
+    await writeFile(
+      join(codeDir, "vite.config.ts"),
+      [
+        "import { defineConfig } from 'vite';",
+        "import react from '@vitejs/plugin-react-swc';",
+        "import path from 'path';",
+        "",
+        "export default defineConfig({",
+        "  plugins: [react()],",
+        "  resolve: {",
+        "    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],",
+        "    alias: {",
+        "      'sonner@2.0.3': 'sonner',",
+        "      '@radix-ui/react-slot@1.1.2': '@radix-ui/react-slot',",
+        "      'lucide-react@0.487.0': 'lucide-react',",
+        "      '@': path.resolve(__dirname, './src'),",
+        "    },",
+        "  },",
+        "  build: {",
+        "    target: 'esnext',",
+        "    outDir: 'build',",
+        "  },",
+        "  server: {",
+        "    port: 3000,",
+        "    open: true,",
+        "  },",
+        "});",
+      ].join("\n")
+    );
+
+    const reachableFiles = new Set(["src/App.tsx"]);
+    const result = await resolveDeps(codeDir, reachableFiles);
+
+    const viteConfig = await readFile(join(codeDir, "vite.config.ts"), "utf-8");
+    expect(viteConfig).not.toContain("sonner@2.0.3");
+    expect(viteConfig).not.toContain("@radix-ui/react-slot@1.1.2");
+    expect(viteConfig).not.toContain("lucide-react@0.487.0");
+    expect(viteConfig).toContain("'@'");
+    expect(viteConfig).toContain("path.resolve");
+    expect(result.viteAliasesCleaned).toBe(3);
+  });
+
+  it("generates basic vite.config.ts when missing", async () => {
+    await writeFile(
+      join(srcDir, "App.tsx"),
+      'import { useState } from "react";\nexport function App() { return null; }\n'
+    );
+    await writeFile(
+      join(codeDir, "package.json"),
+      JSON.stringify({ name: "test", dependencies: { react: "^18.3.1" } })
+    );
+    // No vite.config.ts
+
+    const reachableFiles = new Set(["src/App.tsx"]);
+    await resolveDeps(codeDir, reachableFiles);
+
+    const viteConfig = await readFile(join(codeDir, "vite.config.ts"), "utf-8");
+    expect(viteConfig).toContain("defineConfig");
+    expect(viteConfig).toContain("react()");
+    expect(viteConfig).toContain("'@'");
+  });
+
   it("generates package.json from scratch when missing", async () => {
     await writeFile(
       join(srcDir, "main.tsx"),

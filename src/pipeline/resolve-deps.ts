@@ -116,6 +116,65 @@ async function completePackageJson(
   return { depsAdded, wildcardResolved, generated };
 }
 
+// Matches alias lines like: 'sonner@2.0.3': 'sonner',
+const VITE_ALIAS_VERSION_LINE =
+  /^\s*['"](@?[^'"@]+)@[\d.]+[^'"]*['"]\s*:\s*['"][^'"]+['"]\s*,?\s*$/;
+
+async function cleanViteConfig(
+  codeDir: string
+): Promise<{ viteAliasesCleaned: number }> {
+  const viteConfigPath = join(codeDir, "vite.config.ts");
+
+  try {
+    await access(viteConfigPath);
+  } catch {
+    // Generate basic vite.config.ts
+    const template = [
+      "import { defineConfig } from 'vite';",
+      "import react from '@vitejs/plugin-react-swc';",
+      "import path from 'path';",
+      "",
+      "export default defineConfig({",
+      "  plugins: [react()],",
+      "  resolve: {",
+      "    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],",
+      "    alias: {",
+      "      '@': path.resolve(__dirname, './src'),",
+      "    },",
+      "  },",
+      "  build: {",
+      "    target: 'esnext',",
+      "    outDir: 'build',",
+      "  },",
+      "  server: {",
+      "    port: 3000,",
+      "    open: true,",
+      "  },",
+      "});",
+    ].join("\n");
+    await writeFile(viteConfigPath, template);
+    return { viteAliasesCleaned: 0 };
+  }
+
+  const content = await readFile(viteConfigPath, "utf-8");
+  const lines = content.split("\n");
+  let viteAliasesCleaned = 0;
+
+  const cleaned = lines.filter((line) => {
+    if (VITE_ALIAS_VERSION_LINE.test(line)) {
+      viteAliasesCleaned++;
+      return false;
+    }
+    return true;
+  });
+
+  if (viteAliasesCleaned > 0) {
+    await writeFile(viteConfigPath, cleaned.join("\n"));
+  }
+
+  return { viteAliasesCleaned };
+}
+
 async function cleanVersionedImports(
   codeDir: string,
   reachableFiles: Set<string>
@@ -163,11 +222,14 @@ export async function resolveDeps(
     codeDir, versionMap, importedPackages
   );
 
+  // Phase 4: Clean vite.config.ts
+  const { viteAliasesCleaned } = await cleanViteConfig(codeDir);
+
   return {
     importsFixed,
     depsAdded,
     wildcardResolved,
-    viteAliasesCleaned: 0,
+    viteAliasesCleaned,
     packageJsonGenerated: generated,
   };
 }
