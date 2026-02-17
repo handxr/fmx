@@ -4,11 +4,7 @@ export interface StyleRule {
   name: string;
   description: string;
   appliesTo: (filePath: string) => boolean;
-  fix: (content: string, filePath: string, context: RuleContext) => string;
-}
-
-export interface RuleContext {
-  hasContentStretch: boolean;
+  fix: (content: string, filePath: string) => string;
 }
 
 export interface StyleFixResult {
@@ -17,55 +13,12 @@ export interface StyleFixResult {
 }
 
 // --- Rules ---
-
-const injectContentStretch: StyleRule = {
-  name: "inject-content-stretch",
-  description: "Adds .content-stretch utility class when used in JSX but missing from CSS",
-  appliesTo: (filePath) => filePath === "src/styles/theme.css",
-  fix: (content, _filePath, context) => {
-    if (!context.hasContentStretch) return content;
-    if (content.includes(".content-stretch")) return content;
-
-    const block = [
-      "",
-      "@layer utilities {",
-      "  .content-stretch {",
-      "    width: 100%;",
-      "  }",
-      "}",
-      "",
-    ].join("\n");
-
-    return content + block;
-  },
-};
-
-const fixModalAlignment: StyleRule = {
-  name: "fix-modal-alignment",
-  description: "Fixes items-end to items-center in modal/card containers",
-  appliesTo: (filePath) => filePath.endsWith(".tsx") || filePath.endsWith(".jsx"),
-  fix: (content) => {
-    return content
-      .split("\n")
-      .map((line) => {
-        if (
-          line.includes("bg-white") &&
-          line.includes("content-stretch") &&
-          line.includes("flex-col") &&
-          line.includes("rounded-") &&
-          line.includes("items-end")
-        ) {
-          return line.replace(/\bitems-end\b/g, "items-center");
-        }
-        return line;
-      })
-      .join("\n");
-  },
-};
+// Extensible rule system: add new StyleRule objects to this array.
+// Each rule must be idempotent and only modify content it's certain about.
 
 const ensureRootHeight: StyleRule = {
   name: "ensure-root-height",
-  description: "Ensures html, body, #root have height: 100% for full-height layouts",
+  description: "Ensures html, body, #root have full height for layouts using size-full",
   appliesTo: (filePath) => filePath === "src/styles/theme.css",
   fix: (content) => {
     if (content.includes("#root") && content.includes("height")) return content;
@@ -74,6 +27,12 @@ const ensureRootHeight: StyleRule = {
       "",
       "html, body, #root {",
       "  height: 100%;",
+      "  min-height: 100svh;",
+      "}",
+      "",
+      "body {",
+      "  margin: 0;",
+      "  overflow-x: hidden;",
       "}",
       "",
     ].join("\n");
@@ -82,7 +41,7 @@ const ensureRootHeight: StyleRule = {
   },
 };
 
-const rules: StyleRule[] = [injectContentStretch, fixModalAlignment, ensureRootHeight];
+const rules: StyleRule[] = [ensureRootHeight];
 
 // --- Main ---
 
@@ -92,22 +51,6 @@ export async function fixStyles(
   codeDir: string
 ): Promise<StyleFixResult> {
   const applied: Array<{ rule: string; file: string }> = [];
-
-  // Pre-scan: check if any reachable TSX/JSX file uses content-stretch
-  let hasContentStretch = false;
-  for (const relPath of reachableFiles) {
-    if (!relPath.endsWith(".tsx") && !relPath.endsWith(".jsx")) continue;
-
-    const content = transformedFiles.get(relPath) ??
-      await Bun.file(join(codeDir, relPath)).text();
-
-    if (content.includes("content-stretch")) {
-      hasContentStretch = true;
-      break;
-    }
-  }
-
-  const context: RuleContext = { hasContentStretch };
 
   // Collect all files to process: reachable files + well-known CSS targets
   // (style files are always copied to output but may not be in reachableFiles)
@@ -127,7 +70,7 @@ export async function fixStyles(
     for (const rule of rules) {
       if (!rule.appliesTo(relPath)) continue;
 
-      const fixed = rule.fix(content, relPath, context);
+      const fixed = rule.fix(content, relPath);
       if (fixed !== content) {
         content = fixed;
         transformedFiles.set(relPath, content);
