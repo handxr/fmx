@@ -40,7 +40,49 @@ const injectContentStretch: StyleRule = {
   },
 };
 
-const rules: StyleRule[] = [injectContentStretch];
+const fixModalAlignment: StyleRule = {
+  name: "fix-modal-alignment",
+  description: "Fixes items-end to items-center in modal/card containers",
+  appliesTo: (filePath) => filePath.endsWith(".tsx") || filePath.endsWith(".jsx"),
+  fix: (content) => {
+    return content
+      .split("\n")
+      .map((line) => {
+        if (
+          line.includes("bg-white") &&
+          line.includes("content-stretch") &&
+          line.includes("flex-col") &&
+          line.includes("rounded-") &&
+          line.includes("items-end")
+        ) {
+          return line.replace(/\bitems-end\b/g, "items-center");
+        }
+        return line;
+      })
+      .join("\n");
+  },
+};
+
+const ensureRootHeight: StyleRule = {
+  name: "ensure-root-height",
+  description: "Ensures html, body, #root have height: 100% for full-height layouts",
+  appliesTo: (filePath) => filePath === "src/styles/theme.css",
+  fix: (content) => {
+    if (content.includes("#root") && content.includes("height")) return content;
+
+    const block = [
+      "",
+      "html, body, #root {",
+      "  height: 100%;",
+      "}",
+      "",
+    ].join("\n");
+
+    return content + block;
+  },
+};
+
+const rules: StyleRule[] = [injectContentStretch, fixModalAlignment, ensureRootHeight];
 
 // --- Main ---
 
