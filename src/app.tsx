@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createRequire } from "node:module";
 import { Box, Text, Newline, useApp } from "ink";
 import { StepList, type Step } from "./ui/StepList.js";
 import { Summary, type SummaryData } from "./ui/Summary.js";
@@ -8,6 +9,9 @@ import { resolveDeps } from "./pipeline/resolve-deps.js";
 import { transform } from "./pipeline/transform.js";
 import { writeOutput } from "./pipeline/write.js";
 import type { ValidatedInput } from "./pipeline/validate.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
 
 interface AppProps {
   input: ValidatedInput;
@@ -128,7 +132,7 @@ export function App({ input }: AppProps) {
       <Newline />
       <Box marginLeft={2}>
         <Text bold>figmx</Text>
-        <Text dimColor> v1.0.0</Text>
+        <Text dimColor> v{version}</Text>
       </Box>
       <Newline />
       <Box marginLeft={2}>
