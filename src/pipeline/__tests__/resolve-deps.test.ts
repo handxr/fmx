@@ -173,6 +173,35 @@ describe("resolveDeps", () => {
     expect(viteConfig).toContain("'@'");
   });
 
+  it("removes @/ path-alias deps from package.json", async () => {
+    await writeFile(
+      join(srcDir, "App.tsx"),
+      'import { useState } from "react";\nexport function App() { return null; }\n'
+    );
+    await writeFile(
+      join(codeDir, "package.json"),
+      JSON.stringify({
+        name: "test",
+        dependencies: {
+          "@/app": "*",
+          "@/imports": "*",
+          react: "18.3.1",
+          "react-dom": "18.3.1",
+          "tw-animate-css": "1.3.8",
+        },
+      })
+    );
+
+    const reachableFiles = new Set(["src/App.tsx"]);
+    await resolveDeps(codeDir, reachableFiles);
+
+    const pkg = JSON.parse(await readFile(join(codeDir, "package.json"), "utf-8"));
+    expect(pkg.dependencies["@/app"]).toBeUndefined();
+    expect(pkg.dependencies["@/imports"]).toBeUndefined();
+    expect(pkg.dependencies.react).toBeDefined();
+    expect(pkg.dependencies["tw-animate-css"]).toBeDefined();
+  });
+
   it("generates package.json from scratch when missing", async () => {
     await writeFile(
       join(srcDir, "main.tsx"),

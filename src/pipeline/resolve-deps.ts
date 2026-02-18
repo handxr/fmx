@@ -45,7 +45,12 @@ async function findAllImportedPackages(
     let match;
     while ((match = BARE_IMPORT_REGEX.exec(content)) !== null) {
       const specifier = match[1];
-      if (specifier && !specifier.startsWith("figma:") && !specifier.startsWith("node:")) {
+      if (
+        specifier &&
+        !specifier.startsWith("figma:") &&
+        !specifier.startsWith("node:") &&
+        !specifier.startsWith("@/")
+      ) {
         packages.add(getPackageName(specifier));
       }
     }
@@ -85,6 +90,12 @@ async function completePackageJson(
   }
 
   if (!pkg.dependencies) pkg.dependencies = {};
+
+  // Remove path-alias fake deps like "@/app", "@/imports" — these are Vite
+  // aliases pointing to src/ subdirectories, not real npm packages.
+  for (const key of Object.keys(pkg.dependencies)) {
+    if (key.startsWith("@/")) delete pkg.dependencies[key];
+  }
 
   const allDeps = { ...pkg.dependencies, ...pkg.peerDependencies };
   let depsAdded = 0;
